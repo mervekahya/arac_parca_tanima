@@ -1,0 +1,11 @@
+tensorflow
+numpy
+pandas
+opencv-python
+matplotlib
+scikit-learn
+icrawler
+SpeechRecognition
+gTTS
+pydub
+# simpleaudio veya playsound mac release sorunlu olabiliyor, os.system('afplay ...') kullanacagim
