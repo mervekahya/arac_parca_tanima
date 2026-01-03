@@ -6,17 +6,10 @@ from PIL import Image
 import numpy as np
 import os
 import time
-from voice_utils import VoiceAssistant
 
 MODEL_PATH = 'models/arac_parca_model.pth'
 CLASS_NAMES_PATH = 'models/class_names.txt'
 IMG_SIZE = (224, 224)
-
-# Global değişkenler
-current_prediction = "Tanımsız"
-current_confidence = 0.0
-last_spoken_time = 0
-voice_assistant = VoiceAssistant()
 
 def load_inference_model(device):
     if not os.path.exists(MODEL_PATH):
@@ -45,31 +38,7 @@ def load_inference_model(device):
     
     return model, class_names
 
-def voice_callback(text):
-    global current_prediction, current_confidence, last_spoken_time
-    
-    keywords = ["bu nedir", "bu ne", "nedir bu", "nadir bu", "parça ne"]
-    
-    if any(keyword in text for keyword in keywords):
-        current_time = time.time()
-        if current_time - last_spoken_time > 5:
-            # Sinif isminden Marka/Model ve Parca ismini ayristiralim
-            # Ornek: Fiat_Egea_Lastik -> Parca: Lastik, Arac: Fiat Egea
-            parts = current_prediction.split('_')
-            part_name = parts[-1]
-            car_model = " ".join(parts[:-1])
-            
-            if current_confidence > 60: 
-                message = f"Bu bir {part_name}. {car_model} modeline ait olduğunu düşünüyorum."
-                voice_assistant.speak(message)
-                last_spoken_time = current_time
-            else:
-                voice_assistant.speak("Emin olamadım, lütfen parçayı daha net gösterin.")
-                last_spoken_time = current_time
-
 def main():
-    global current_prediction, current_confidence
-    
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
     elif torch.backends.mps.is_available():
@@ -100,9 +69,6 @@ def main():
 
     print("Çıkış için 'q' tuşuna basın.")
     
-    # Sesli asistan başlat
-    voice_assistant.start_listening_loop(voice_callback)
-    
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
@@ -129,10 +95,6 @@ def main():
         conf_score = confidence.item() * 100
         predicted_label = class_names[predicted_index]
         
-        # Global güncelleme
-        current_prediction = predicted_label
-        current_confidence = conf_score
-
         # Görselleştirme
         color = (0, 255, 0) if conf_score > 70 else (0, 165, 255)
         text = f"{predicted_label} ({conf_score:.1f}%)"
@@ -142,14 +104,11 @@ def main():
         cv2.rectangle(frame, (10, 5), (10 + text_w, 35 + 5), (0,0,0), -1)
         cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
         
-        cv2.putText(frame, "Sesli komut: 'Bu nedir?'", (10, height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        
         cv2.imshow('Arac Parca Tanima (PyTorch)', frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    voice_assistant.stop_listening()
     cap.release()
     cv2.destroyAllWindows()
 
